@@ -3,9 +3,9 @@
 [RequireComponent(typeof(Rigidbody))]
 public class TossableObject : MonoBehaviour {
     // Global constants for all tossables.
-    private const float DRAG_COEFFICIENT = -0.05f;
+    private const float DRAG_COEFFICIENT = -0.06f;
     private const float IDLE_VELOCITY_THRESHOLD = 0.02f * 0.02f;
-    private const float TOSS_FORCE_DAMPENING = 0.5f;
+    private const float TOSS_FORCE_DAMPENING = 0.75f;
     private const float BOOMERANG_DELAY = 0.5f;                         // To prevent from boomeranging immediately.
     private const float BOOMERANG_TRIGGER_THRESHOLD = 0.4f * 0.4f;      // Minimum toss velocity in order to start boomeranging.
     private const float BOOMERANG_RETURN_THRESHOLD = 0.2f * 0.2f;       // Velocity of object before boomeranging back.

@@ -2,7 +2,10 @@
 
 public class TossController : MonoBehaviour {
     public float dragForce = 25f;               // Higher values = snappier drag.
-    public float dragDistance = 1f;             // Target distance the object should be from the camera when dragging.
+    public float defaultDragDistance = 1f;             // Target distance the object should be from the camera when dragging.
+    public float minDragDistance = 0.4f;
+    public float maxDragDistance = 1.5f;
+    public float dragDistanceStep = 0.05f;
     public float tossForce = 4f;                // Release toss force.
     public float dragTensionLimit = 200f;       // Minimum threshold before auto-releasing object due to something blocking it's path.
     public Transform handRig;
@@ -14,23 +17,42 @@ public class TossController : MonoBehaviour {
     private TossableObject currentlyHolding;
     private float prevHeldVelocity;
     private float rigidOrigAngDrag;
+    private float curDragDistance;
+    private float visualHandDist;
 
     private void Awake() {
         cachedTrans = transform;
         cachedCam = GetComponent<Camera>();
         currentlyHolding = null;
         prevHeldVelocity = 0f;
+        curDragDistance = defaultDragDistance;
     }
     
     private void Update() {
+        // Control the hand rig positioning and try to avoid clipping using the raycast.
         UpdateHandVisual();
 
+        // Controlling hand distance by scrolling.
+        float scrollWheel = Input.GetAxis("Mouse ScrollWheel");
+
+        if(scrollWheel < -Mathf.Epsilon) {
+            curDragDistance -= dragDistanceStep;
+            curDragDistance = Mathf.Max(minDragDistance, curDragDistance);
+        }
+        else if(scrollWheel > Mathf.Epsilon) {
+            curDragDistance += dragDistanceStep;
+            curDragDistance = Mathf.Min(curDragDistance, maxDragDistance);
+        }
+
+        // Handle dragging and releasing/tossing an object.
         if(Input.GetMouseButtonDown(0)) {
-            // Start dragging object on left click.
             Ray rayToCursor = cachedCam.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
 
-            if(Physics.Raycast(rayToCursor, out hit, 25f)) {
+            // Buffer distance to allow grabbing objects further from hand.
+            float rayDistance = curDragDistance * 2f;
+
+            if(Physics.Raycast(rayToCursor, out hit, rayDistance)) {
                 if(currentlyHolding != null) {
                     // Ensure previously held object is released before holding new object.
                     ReleaseHeldObject();
@@ -41,7 +63,6 @@ public class TossController : MonoBehaviour {
         }
         else {
             if(Input.GetMouseButtonUp(0) && currentlyHolding != null) {
-                // Released left mouse button.
                 ReleaseHeldObject();
             }
         }
@@ -50,7 +71,7 @@ public class TossController : MonoBehaviour {
     private void FixedUpdate() {
         if(currentlyHolding != null) {
             // Get the target position of dragged object.
-            Vector3 targetPoint = GetPointTowardsCursor(dragDistance);
+            Vector3 targetPoint = GetPointTowardsCursor(curDragDistance);
 
             // Check for abrupt deceleration in velocity while dragging.
             // Usually means there is something blocking it's path (if high enough).
@@ -60,7 +81,8 @@ public class TossController : MonoBehaviour {
                 ReleaseHeldObject();
             }
             else {
-                // Instantly update velocity towards target point.
+                // Don't set rigidbody position since it can clip through objects. Instead, we set the velocity towards
+                // the target point.
                 currentlyHolding.cachedRigid.velocity = (targetPoint - currentlyHolding.cachedRigid.position) * dragForce;
                 prevHeldVelocity = currentlyHolding.cachedRigid.velocity.magnitude;
             }
@@ -76,6 +98,10 @@ public class TossController : MonoBehaviour {
         currentlyHolding = obj;
         prevHeldVelocity = obj.cachedRigid.velocity.magnitude;
 
+        // Updating hand distance to where the visual hand is.
+        curDragDistance = visualHandDist;
+        curDragDistance = Mathf.Clamp(curDragDistance, minDragDistance, maxDragDistance);
+
         // Send grab event.
         currentlyHolding.OnGrabbed();
         
@@ -90,24 +116,45 @@ public class TossController : MonoBehaviour {
         
         // Restore angular drag and add some random torque. More torque when released with more force.
         currentlyHolding.cachedRigid.angularDrag = rigidOrigAngDrag;
-        float torqueAmount = 0.0005f + (currentlyHolding.cachedRigid.velocity.magnitude * 0.002f);
+        float torqueAmount = 0.0005f + (currentlyHolding.cachedRigid.velocity.magnitude * 0.001f);
         currentlyHolding.cachedRigid.AddTorque(Random.onUnitSphere * torqueAmount, ForceMode.Impulse);
 
         // Send toss event.
         currentlyHolding.OnTossed();
         currentlyHolding = null;
     }
+
+    private Ray GetRayTowardsCursor() {
+        return cachedCam.ScreenPointToRay(Input.mousePosition);
+    }
     
     private Vector3 GetPointTowardsCursor(float distance) {
-        Ray rayToCursor = cachedCam.ScreenPointToRay(Input.mousePosition);
+        Ray rayToCursor = GetRayTowardsCursor();
         return cachedTrans.position + (rayToCursor.direction * distance);
     }
 
     private void UpdateHandVisual() {
-        // Position hand where drag distance is.
-        Vector3 handPos = GetPointTowardsCursor(dragDistance - 0.1f);
+        const float VISUAL_HAND_OFFSET_Z = -0.1f;
+
+        // Position the hand a little behind the drag distance.
+        float handDist = curDragDistance + VISUAL_HAND_OFFSET_Z;
+        Ray rayToCursor = GetRayTowardsCursor();
+        Vector3 handPos = GetPointTowardsCursor(handDist);
+
+        if(currentlyHolding == null) {
+            RaycastHit hit;
+
+            if(Physics.Raycast(rayToCursor, out hit, handDist)) {
+                float distDelta = hit.distance - handDist; // Always negative.
+                handPos += rayToCursor.direction * distDelta; // Shift hand position to hit point.
+            }
+        }
+        
         Quaternion handRot = Quaternion.LookRotation(handPos - cachedTrans.position);
         handRig.SetPositionAndRotation(handPos, handRot);
+
+        // Update visual hand distance from camera, accounting for the visual offset.
+        visualHandDist = (handPos - cachedTrans.position).magnitude - VISUAL_HAND_OFFSET_Z;
 
         // Update finger.
         bool showClosedHand = (currentlyHolding != null);
