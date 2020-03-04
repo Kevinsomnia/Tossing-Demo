@@ -3592,7 +3592,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a4e551a8f50e3c746938d23046ef7718, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  cameraLook: {fileID: 452100006}
   spawner: {fileID: 209937619}
+  imageEffects: {fileID: 452100005}
   settingsMenuToggle: {fileID: 556368534}
   settingsMenuGo: {fileID: 408004522}
   lowGraphicsToggle: {fileID: 1228382540}

@@ -76,12 +76,14 @@ public class TossableObject : MonoBehaviour {
         Vector3 dirToTossedPos = tossedPos - cachedRigid.position;
 
         // Stop boomeranging when we pass the point/plane where we tossed from.
-        // The boomerang path won't always be a straight line (bounces off walls),
-        // so we can't use a distance threshold.
+        // The boomerang path won't always be a straight line (bounces off walls), so we can't use a distance
+        // threshold otherwise it might spin around the point a bunch.
         float directionRelativeToToss = Vector3.Dot(-dirToTossedPos.normalized, tossedVelocity.normalized);
 
         if(directionRelativeToToss > 0f) {
-            // Dot product so that we get the velocity relative to boomerang direction. It will be positive.
+            // Dot product so that we get the velocity relative to boomerang direction. It will be positive if
+            // it's heading along the boomerang path and negative it's moving away.
+            // Use this to limit the amount of force we add towards the boomerang direction.
             float boomerangDot = Vector3.Dot(dirToTossedPos.normalized, cachedRigid.velocity);
 
             if(boomerangDot < BOOMERANG_VELOCITY_LIMIT) {

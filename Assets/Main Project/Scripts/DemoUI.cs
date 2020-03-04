@@ -1,8 +1,11 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Rendering.PostProcessing;
 
 public class DemoUI : MonoBehaviour {
+    public CameraController cameraLook;
     public ObjectSpawner spawner;
+    public PostProcessLayer imageEffects;
     public Toggle settingsMenuToggle;
     public GameObject settingsMenuGo;
     public Toggle lowGraphicsToggle;
@@ -25,10 +28,19 @@ public class DemoUI : MonoBehaviour {
 
     public void OnToggledSettingsMenu() {
         settingsMenuGo.SetActive(settingsMenuToggle.isOn);
+        cameraLook.enabled = !settingsMenuToggle.isOn;
     }
 
     public void OnChangedLowGraphics() {
-        QualitySettings.SetQualityLevel((lowGraphicsToggle.isOn) ? 0 : 1, false);
+        if(lowGraphicsToggle.isOn) {
+            QualitySettings.SetQualityLevel(0, false);
+            imageEffects.enabled = false;
+        }
+        else {
+            QualitySettings.SetQualityLevel(1, false);
+            imageEffects.enabled = true;
+        }
+
         PlayerPrefs.SetInt("LowGraphics", (lowGraphicsToggle.isOn) ? 1 : 0);
     }
 
