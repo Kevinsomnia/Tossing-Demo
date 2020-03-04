@@ -7,6 +7,10 @@ public class ObjectSpawner : MonoBehaviour {
     public GameObject[] spawnablePrefabs;
 
     private void Awake() {
+        Spawn();
+    }
+
+    public void Spawn() {
         // Retrieve spawning area from box collider.
         BoxCollider bc = GetComponent<BoxCollider>();
         bc.enabled = false;
