@@ -16,7 +16,7 @@ public class CameraController : MonoBehaviour {
     private void Update() {
         xRot += Input.GetAxis("Mouse X") * mouseSensitivity;
         yRot -= Input.GetAxis("Mouse Y") * mouseSensitivity;
-        xRot = Mathf.Clamp(xRot, -45f, 45f);
+        xRot = Mathf.Clamp(xRot, -70f, 70f);
         yRot = Mathf.Clamp(yRot, -60f, 60f);
 
         cachedTrans.rotation = Quaternion.Euler(yRot, xRot, 0f);

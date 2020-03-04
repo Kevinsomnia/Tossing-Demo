@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 1301444647175955762}
   - component: {fileID: 9170493669872809575}
   - component: {fileID: 22403945}
+  - component: {fileID: 5600125930518384622}
   m_Layer: 0
   m_Name: Red Can
   m_TagString: Untagged
@@ -87,7 +88,7 @@ MeshCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3448371800748872414}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: 892318eca52822742a4db6eeb4b5bddc, type: 2}
   m_IsTrigger: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -103,10 +104,22 @@ Rigidbody:
   m_GameObject: {fileID: 3448371800748872414}
   serializedVersion: 2
   m_Mass: 1
-  m_Drag: 0.001
-  m_AngularDrag: 0.05
+  m_Drag: 0
+  m_AngularDrag: 0.15
   m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 1
   m_Constraints: 0
   m_CollisionDetection: 1
+--- !u!114 &5600125930518384622
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3448371800748872414}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4dcb8c75b630dca4fb34c6d2e726cea6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

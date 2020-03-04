@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 
 public class TossController : MonoBehaviour {
-    public float maxGrabDistance = 5f;          // Can grab objects within this distance.
     public float dragForce = 25f;               // Higher values = snappier drag.
     public float dragDistance = 1f;             // Target distance the object should be from the camera when dragging.
     public float tossForce = 4f;                // Release toss force.
@@ -12,7 +11,7 @@ public class TossController : MonoBehaviour {
 
     private Transform cachedTrans;
     private Camera cachedCam;
-    private Rigidbody currentlyHolding;
+    private TossableObject currentlyHolding;
     private float prevHeldVelocity;
     private float rigidOrigAngDrag;
 
@@ -31,19 +30,19 @@ public class TossController : MonoBehaviour {
             Ray rayToCursor = cachedCam.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
 
-            if(Physics.Raycast(rayToCursor, out hit, maxGrabDistance)) {
+            if(Physics.Raycast(rayToCursor, out hit, 25f)) {
                 if(currentlyHolding != null) {
-                    // Ensure previously held object is released.
-                    ReleaseHeldObject(false);
+                    // Ensure previously held object is released before holding new object.
+                    ReleaseHeldObject();
                 }
 
-                HoldObject(hit.rigidbody);
+                HoldObject(hit.collider.GetComponent<TossableObject>());
             }
         }
         else {
             if(Input.GetMouseButtonUp(0) && currentlyHolding != null) {
                 // Released left mouse button.
-                ReleaseHeldObject(true);
+                ReleaseHeldObject();
             }
         }
     }
@@ -55,46 +54,47 @@ public class TossController : MonoBehaviour {
 
             // Check for abrupt deceleration in velocity while dragging.
             // Usually means there is something blocking it's path (if high enough).
-            float decelAmount = prevHeldVelocity - currentlyHolding.velocity.magnitude;
+            float decelAmount = prevHeldVelocity - currentlyHolding.cachedRigid.velocity.magnitude;
 
-            if(prevHeldVelocity - currentlyHolding.velocity.magnitude > dragTensionLimit) {
-                ReleaseHeldObject(true);
+            if(decelAmount > dragTensionLimit) {
+                ReleaseHeldObject();
             }
             else {
                 // Instantly update velocity towards target point.
-                currentlyHolding.velocity = (targetPoint - currentlyHolding.position) * dragForce;
-                prevHeldVelocity = currentlyHolding.velocity.magnitude;
+                currentlyHolding.cachedRigid.velocity = (targetPoint - currentlyHolding.cachedRigid.position) * dragForce;
+                prevHeldVelocity = currentlyHolding.cachedRigid.velocity.magnitude;
             }
         }
     }
 
-    private void HoldObject(Rigidbody rigid) {
-        if(rigid == null) {
-            ReleaseHeldObject(false);
+    private void HoldObject(TossableObject obj) {
+        if(obj == null) {
+            ReleaseHeldObject();
             return;
         }
 
-        currentlyHolding = rigid;
-        prevHeldVelocity = currentlyHolding.velocity.magnitude;
+        currentlyHolding = obj;
+        prevHeldVelocity = obj.cachedRigid.velocity.magnitude;
 
+        // Send grab event.
+        currentlyHolding.OnGrabbed();
+        
         // "Freeze" rotation while held. Restore angular drag upon releasing.
-        rigidOrigAngDrag = currentlyHolding.angularDrag;
-        currentlyHolding.angularDrag = 10f;
+        rigidOrigAngDrag = obj.cachedRigid.angularDrag;
+        obj.cachedRigid.angularDrag = 10f;
     }
 
-    private void ReleaseHeldObject(bool dampenVelocity) {
+    private void ReleaseHeldObject() {
         if(currentlyHolding == null)
             return;
         
-        if(dampenVelocity) {
-            // Dampen velocity before releasing, since dragging the object relies on a lot of force.
-            currentlyHolding.velocity *= (tossForce / dragForce);
-        }
-
         // Restore angular drag and add some random torque. More torque when released with more force.
-        currentlyHolding.angularDrag = rigidOrigAngDrag;
-        float torqueAmount = 0.0005f + (currentlyHolding.velocity.magnitude * 0.002f);
-        currentlyHolding.AddTorque(Random.onUnitSphere * torqueAmount, ForceMode.Impulse);
+        currentlyHolding.cachedRigid.angularDrag = rigidOrigAngDrag;
+        float torqueAmount = 0.0005f + (currentlyHolding.cachedRigid.velocity.magnitude * 0.002f);
+        currentlyHolding.cachedRigid.AddTorque(Random.onUnitSphere * torqueAmount, ForceMode.Impulse);
+
+        // Send toss event.
+        currentlyHolding.OnTossed();
         currentlyHolding = null;
     }
     
