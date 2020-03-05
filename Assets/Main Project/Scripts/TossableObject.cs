@@ -17,6 +17,7 @@ public class TossableObject : MonoBehaviour {
 
     public enum State { Idle, Boomeranging, Grabbed };
 
+    public Transform cachedTrans { get; private set; }
     public Rigidbody cachedRigid { get; private set; }
 
     private State status;
@@ -29,6 +30,7 @@ public class TossableObject : MonoBehaviour {
     private bool boomerangingCCW;
 
     private void Awake() {
+        cachedTrans = transform;
         cachedRigid = GetComponent<Rigidbody>();
         status = State.Idle;
     }
@@ -116,7 +118,7 @@ public class TossableObject : MonoBehaviour {
         cachedRigid.velocity = boomerangDir * BOOMERANG_FORCE * tossedVelocityMagnitude;
         prevBoomerangSpeed = cachedRigid.velocity.magnitude;
 
-        cachedRigid.AddTorque(transform.forward * 2.5f, ForceMode.Acceleration);
+        cachedRigid.AddTorque(cachedTrans.forward * 2.5f * tossedVelocityMagnitude, ForceMode.Acceleration);
 
         if(Mathf.Abs(boomerangAngle) > BOOMERANG_ARC) {
             // End of boomerang path.
