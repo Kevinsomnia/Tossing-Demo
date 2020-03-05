@@ -6,22 +6,27 @@ public class TossableObject : MonoBehaviour {
     private const float DRAG_COEFFICIENT = -0.06f;
     private const float IDLE_VELOCITY_THRESHOLD = 0.02f * 0.02f;
     private const float TOSS_FORCE_DAMPENING = 0.75f;
-    private const float BOOMERANG_DELAY = 0.5f;                         // To prevent from boomeranging immediately.
-    private const float BOOMERANG_TRIGGER_THRESHOLD = 0.4f * 0.4f;      // Minimum toss velocity in order to start boomeranging.
-    private const float BOOMERANG_RETURN_THRESHOLD = 0.2f * 0.2f;       // Velocity of object before boomeranging back.
-    private const float BOOMERANG_FORCE = 0.9f;
+    private const float BOOMERANG_ARC = 335f;                           // Length of boomerang path in degrees.
+    private const float BOOMERANG_DURATION = 4f;                        // Duration of the boomerang cycle.
+    private const float BOOMERANG_TRIGGER_THRESHOLD = 0.4f;             // Minimum toss velocity in order to start boomeranging.
+    private const float BOOMERANG_FORCE = 0.3f;                         // Velocity multiplier during boomerang.
+    private const float BOOMERANG_SPIN = 2.5f;                          // Torque multiplier during boomerang.
     private const float BOOMERANG_VELOCITY_LIMIT = 3f;                  // Prevent boomerang from coming back too fast.
 
     public static bool boomerangEnabled = true;
 
-    public enum State { Idle, Boomerang_Wait, Boomeranging, Grabbed };
+    public enum State { Idle, Boomeranging, Grabbed };
 
     public Rigidbody cachedRigid { get; private set; }
 
     private State status;
     private Vector3 tossedPos;
     private Vector3 tossedVelocity;
+    private float tossedVelocityMagnitude;
+    private float prevBoomerangSpeed;                                   // Used for boomeranging to detect abrupt deceleration.
     private float lastTossedTime;
+    private float boomerangTime;
+    private bool boomerangingCCW;
 
     private void Awake() {
         cachedRigid = GetComponent<Rigidbody>();
@@ -34,15 +39,9 @@ public class TossableObject : MonoBehaviour {
         }
 
         // Boomerang force is too weak to fight against gravity (if something other than no gravity is selected).
-        cachedRigid.useGravity = (status != State.Boomerang_Wait && status != State.Boomeranging);
+        cachedRigid.useGravity = (status != State.Boomeranging);
 
-        if(status == State.Boomerang_Wait) {
-            // Wait for object to become slow enough before coming back.
-            if(Time.time - lastTossedTime >= BOOMERANG_DELAY && cachedRigid.velocity.sqrMagnitude < BOOMERANG_RETURN_THRESHOLD) {
-                status = State.Boomeranging;
-            }
-        }
-        else if(status == State.Boomeranging) {
+        if(status == State.Boomeranging) {
             // Apply boomerang force.
             ApplyBoomerangForce();
         }
@@ -53,14 +52,25 @@ public class TossableObject : MonoBehaviour {
     }
 
     public void OnTossed() {
+        cachedRigid.velocity *= TOSS_FORCE_DAMPENING;
+
         tossedPos = cachedRigid.position;
         tossedVelocity = cachedRigid.velocity;
+        tossedVelocityMagnitude = tossedVelocity.magnitude;
         lastTossedTime = Time.time;
 
         // Check that boomeranging is enabled and tossed hard enough.
-        bool shouldBoomerang = (boomerangEnabled && tossedVelocity.sqrMagnitude >= BOOMERANG_TRIGGER_THRESHOLD);
-        status = (shouldBoomerang) ? State.Boomerang_Wait : State.Idle;
-        cachedRigid.velocity *= TOSS_FORCE_DAMPENING;
+        bool shouldBoomerang = (boomerangEnabled && tossedVelocityMagnitude >= BOOMERANG_TRIGGER_THRESHOLD);
+
+        if(shouldBoomerang) {
+            status = State.Boomeranging;
+            boomerangTime = 0f;
+            boomerangingCCW = tossedVelocity.x > 0f; // Throw right = rotates CCW.
+            prevBoomerangSpeed = tossedVelocityMagnitude;
+        }
+        else {
+            status = State.Idle;
+        }
     }
 
     private void ApplyDrag() {
@@ -73,24 +83,45 @@ public class TossableObject : MonoBehaviour {
     }
 
     private void ApplyBoomerangForce() {
-        Vector3 dirToTossedPos = tossedPos - cachedRigid.position;
 
-        // Stop boomeranging when we pass the point/plane where we tossed from.
-        // The boomerang path won't always be a straight line (bounces off walls), so we can't use a distance
-        // threshold otherwise it might spin around the point a bunch.
-        float directionRelativeToToss = Vector3.Dot(-dirToTossedPos.normalized, tossedVelocity.normalized);
+        if(boomerangingCCW)
+            // Counter clockwise path.
+            boomerangTime -= Time.deltaTime * (BOOMERANG_ARC / BOOMERANG_DURATION);
+        else
+            // Clockwise path.
+            boomerangTime += Time.deltaTime * (BOOMERANG_ARC / BOOMERANG_DURATION);
+        
+        // Initial velocity is direction of toss, then rotate the velocity vector around using quaternion multiplication.
+        // This will create a circular path.
+        Quaternion boomerangRot = Quaternion.LookRotation(tossedVelocity) * Quaternion.Euler(0f, boomerangTime, 0f);
+        Vector3 boomerangDir = boomerangRot * Vector3.forward;
 
-        if(directionRelativeToToss > 0f) {
-            // Dot product so that we get the velocity relative to boomerang direction. It will be positive if
-            // it's heading along the boomerang path and negative it's moving away.
-            // Use this to limit the amount of force we add towards the boomerang direction.
-            float boomerangDot = Vector3.Dot(dirToTossedPos.normalized, cachedRigid.velocity);
+        if(Mathf.Abs(boomerangTime) > BOOMERANG_ARC * 0.75f) {
+            // Pull closer to the tossed position when nearing the end of the boomerang path.
+            Vector3 dirToTossedPos = tossedPos - cachedRigid.position;
+            boomerangDir += dirToTossedPos.normalized * 0.05f;
+        }
+        
+        // If we hit an object while boomeranging and slow down significantly, avoid sticking to the surface.
+        if(prevBoomerangSpeed > Mathf.Epsilon) {
+            // Factor of deceleration since last frame (0 = didnt slow down, 1 = stopped completely).
+            float decelFactor = (prevBoomerangSpeed - cachedRigid.velocity.magnitude) / prevBoomerangSpeed;
 
-            if(boomerangDot < BOOMERANG_VELOCITY_LIMIT) {
-                cachedRigid.AddForce(dirToTossedPos * BOOMERANG_FORCE, ForceMode.Acceleration);
+            if(decelFactor > 0.66f) {
+                // Slowed down by more than 66% since last frame. Stop boomeranging.
+                status = State.Idle;
+                return;
             }
         }
-        else {
+        
+        cachedRigid.velocity = boomerangDir * BOOMERANG_FORCE * tossedVelocityMagnitude;
+        prevBoomerangSpeed = cachedRigid.velocity.magnitude;
+
+        // Debug.DrawRay(cachedRigid.position, cachedRigid.velocity, Color.red);
+        cachedRigid.AddTorque(transform.forward * 2.5f, ForceMode.Acceleration);
+
+        if(Mathf.Abs(boomerangTime) > BOOMERANG_ARC) {
+            // End of boomerang path.
             status = State.Idle;
         }
     }

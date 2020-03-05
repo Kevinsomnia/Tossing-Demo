@@ -129,7 +129,7 @@ public class TossController : MonoBehaviour {
         // Faster objects have more torque.
         float velocityTorqueFactor = currentlyHolding.cachedRigid.velocity.magnitude * 0.0005f; 
         // Grabbing object near the edge will add more torque as opposed to grabbing near middle.
-        float grabOffCenterTorqueFactor = grabObjOffset.magnitude * 0.001f;
+        float grabOffCenterTorqueFactor = grabObjOffset.magnitude * 0.002f;
         float torqueAmount = 0.0005f + velocityTorqueFactor + grabOffCenterTorqueFactor;
         currentlyHolding.cachedRigid.AddTorque(Random.onUnitSphere * torqueAmount, ForceMode.Impulse);
 
