@@ -25,7 +25,7 @@ public class TossableObject : MonoBehaviour {
     private float tossedVelocityMagnitude;
     private float prevBoomerangSpeed;                                   // Used for boomeranging to detect abrupt deceleration.
     private float lastTossedTime;
-    private float boomerangTime;
+    private float boomerangAngle;
     private bool boomerangingCCW;
 
     private void Awake() {
@@ -64,7 +64,7 @@ public class TossableObject : MonoBehaviour {
 
         if(shouldBoomerang) {
             status = State.Boomeranging;
-            boomerangTime = 0f;
+            boomerangAngle = 0f;
             boomerangingCCW = tossedVelocity.x > 0f; // Throw right = rotates CCW.
             prevBoomerangSpeed = tossedVelocityMagnitude;
         }
@@ -83,20 +83,19 @@ public class TossableObject : MonoBehaviour {
     }
 
     private void ApplyBoomerangForce() {
-
         if(boomerangingCCW)
-            // Counter clockwise path.
-            boomerangTime -= Time.deltaTime * (BOOMERANG_ARC / BOOMERANG_DURATION);
+            // Threw right. Counter clockwise path.
+            boomerangAngle -= Time.deltaTime * (BOOMERANG_ARC / BOOMERANG_DURATION);
         else
-            // Clockwise path.
-            boomerangTime += Time.deltaTime * (BOOMERANG_ARC / BOOMERANG_DURATION);
-        
+            // Threw left. Clockwise path.
+            boomerangAngle += Time.deltaTime * (BOOMERANG_ARC / BOOMERANG_DURATION);
+
         // Initial velocity is direction of toss, then rotate the velocity vector around using quaternion multiplication.
         // This will create a circular path.
-        Quaternion boomerangRot = Quaternion.LookRotation(tossedVelocity) * Quaternion.Euler(0f, boomerangTime, 0f);
+        Quaternion boomerangRot = Quaternion.LookRotation(tossedVelocity) * Quaternion.Euler(0f, boomerangAngle, 0f);
         Vector3 boomerangDir = boomerangRot * Vector3.forward;
 
-        if(Mathf.Abs(boomerangTime) > BOOMERANG_ARC * 0.75f) {
+        if(Mathf.Abs(boomerangAngle) > BOOMERANG_ARC * 0.75f) {
             // Pull closer to the tossed position when nearing the end of the boomerang path.
             Vector3 dirToTossedPos = tossedPos - cachedRigid.position;
             boomerangDir += dirToTossedPos.normalized * 0.05f;
@@ -117,10 +116,9 @@ public class TossableObject : MonoBehaviour {
         cachedRigid.velocity = boomerangDir * BOOMERANG_FORCE * tossedVelocityMagnitude;
         prevBoomerangSpeed = cachedRigid.velocity.magnitude;
 
-        // Debug.DrawRay(cachedRigid.position, cachedRigid.velocity, Color.red);
         cachedRigid.AddTorque(transform.forward * 2.5f, ForceMode.Acceleration);
 
-        if(Mathf.Abs(boomerangTime) > BOOMERANG_ARC) {
+        if(Mathf.Abs(boomerangAngle) > BOOMERANG_ARC) {
             // End of boomerang path.
             status = State.Idle;
         }
