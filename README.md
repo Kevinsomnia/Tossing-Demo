@@ -1,5 +1,5 @@
 # Tossing Demo #
-Unity demo that showcases tossing of objects by dragging the mouse. Mimics the Oculus Touch VR demo. All assets in this project were made by me, except for the Post Processing v2 stack package.
+Unity demo that showcases tossing of objects by dragging the mouse. Mimics the Oculus Touch VR demo. All assets in this project were made by me, except for the Post Processing Stack v2 package.
 
 Demonstration video:
 https://youtu.be/FzGKakmeIx0
