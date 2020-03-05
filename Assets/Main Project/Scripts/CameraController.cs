@@ -2,6 +2,8 @@
 
 public class CameraController : MonoBehaviour {
     public float mouseSensitivity = 1f;
+    public Vector2 xRotLimit = new Vector2(-70f, 70f);
+    public Vector2 yRotLimit = new Vector2(-60f, 60f);
 
     private Transform cachedTrans;
     private float xRot;
@@ -16,11 +18,11 @@ public class CameraController : MonoBehaviour {
     private void Update() {
         if(!Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift)) {
             xRot += Input.GetAxis("Mouse X") * mouseSensitivity;
-            yRot -= Input.GetAxis("Mouse Y") * mouseSensitivity;
+            yRot += Input.GetAxis("Mouse Y") * mouseSensitivity;
         }
 
-        xRot = Mathf.Clamp(xRot, -70f, 70f);
-        yRot = Mathf.Clamp(yRot, -60f, 60f);
-        cachedTrans.rotation = Quaternion.Euler(yRot, xRot, 0f);
+        xRot = Mathf.Clamp(xRot, xRotLimit.x, xRotLimit.y);
+        yRot = Mathf.Clamp(yRot, yRotLimit.x, yRotLimit.y);
+        cachedTrans.rotation = Quaternion.Euler(-yRot, xRot, 0f);
     }
 }
