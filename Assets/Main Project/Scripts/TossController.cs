@@ -15,6 +15,7 @@ public class TossController : MonoBehaviour {
     private Transform cachedTrans;
     private Camera cachedCam;
     private TossableObject currentlyHolding;
+    private Vector3 grabObjOffset;
     private float prevHeldVelocity;
     private float rigidOrigAngDrag;
     private float curDragDistance;
@@ -58,7 +59,13 @@ public class TossController : MonoBehaviour {
                     ReleaseHeldObject();
                 }
 
-                HoldObject(hit.collider.GetComponent<TossableObject>());
+                TossableObject tossable = hit.collider.GetComponent<TossableObject>();
+
+                if(tossable != null) {
+                    // Grab the object so that it's centered around where the cursor was on the object.
+                    grabObjOffset = hit.collider.bounds.center - hit.point;
+                    HoldObject(tossable);
+                }
             }
         }
         else {
@@ -71,7 +78,7 @@ public class TossController : MonoBehaviour {
     private void FixedUpdate() {
         if(currentlyHolding != null) {
             // Get the target position of dragged object.
-            Vector3 targetPoint = GetPointTowardsCursor(curDragDistance);
+            Vector3 targetPoint = GetPointTowardsCursor(curDragDistance) + grabObjOffset;
 
             // Check for abrupt deceleration in velocity while dragging.
             // Usually means there is something blocking it's path (if high enough).
@@ -113,13 +120,20 @@ public class TossController : MonoBehaviour {
     private void ReleaseHeldObject() {
         if(currentlyHolding == null)
             return;
-        
-        // Restore angular drag and add some random torque. More torque when released with more force.
+
+        // No need to add force since the velocity is already set during drag in FixedUpdate.
+        // Restore original angular drag prior to grabbing.
         currentlyHolding.cachedRigid.angularDrag = rigidOrigAngDrag;
-        float torqueAmount = 0.0005f + (currentlyHolding.cachedRigid.velocity.magnitude * 0.001f);
+
+        // Add torque based on multiple factors.
+        // Faster objects have more torque.
+        float velocityTorqueFactor = currentlyHolding.cachedRigid.velocity.magnitude * 0.0005f; 
+        // Grabbing object near the edge will add more torque as opposed to grabbing near middle.
+        float grabOffCenterTorqueFactor = grabObjOffset.magnitude * 0.001f;
+        float torqueAmount = 0.0005f + velocityTorqueFactor + grabOffCenterTorqueFactor;
         currentlyHolding.cachedRigid.AddTorque(Random.onUnitSphere * torqueAmount, ForceMode.Impulse);
 
-        // Send toss event.
+        // Send toss event for boomerang and other behaviors.
         currentlyHolding.OnTossed();
         currentlyHolding = null;
     }

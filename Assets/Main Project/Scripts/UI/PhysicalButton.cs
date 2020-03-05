@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 
 public class PhysicalButton : MonoBehaviour {
-    private const float PUSH_DOT_THRESHOLD = 0.9f;
+    private const float PUSH_DOT_THRESHOLD = 0.8f;
 
     public Transform buttonTrans;
     public Transform pushDirection;

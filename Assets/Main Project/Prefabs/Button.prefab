@@ -159,7 +159,7 @@ MonoBehaviour:
   ringRenderer: {fileID: 3527130927229582648}
   pushedOffset: {x: 0, y: 0.00825, z: 0}
   transitionTime: 0.05
-  physicalForceThreshold: 1.25
+  physicalForceThreshold: 1
   notifyTarget: {fileID: 0}
   notifyMessage: MyFunction
   notifyValue: SomeValue
