@@ -1,12 +1,17 @@
 ﻿using UnityEngine;
 
 public class PhysicalButton : MonoBehaviour {
+    private const float PUSH_DOT_THRESHOLD = 0.9f;
+
     public Transform buttonTrans;
+    public Transform pushDirection;
+    public Renderer ringRenderer;
     public Vector3 pushedOffset;
     public float transitionTime = 0.1f;
     public float physicalForceThreshold = 2f;
     public GameObject notifyTarget;
     public string notifyMessage = "MyFunction";
+    public string notifyValue = "SomeValue";
 
     private Vector3 defaultPos;
     private float animTime;
@@ -22,13 +27,20 @@ public class PhysicalButton : MonoBehaviour {
         buttonTrans.localPosition = defaultPos + (pushedOffset * animTime);
     }
 
-    private void OnCollisionStay(Collision collision) {
-        if(collision.relativeVelocity.sqrMagnitude > physicalForceThreshold * physicalForceThreshold) {
-            OnStartPushing();
+    public void SetRingState(bool on) {
+        if(ringRenderer != null) {
+            ringRenderer.enabled = on;
         }
-        else {
-            // Force is too weak.
-            OnStopPushing();
+    }
+
+    private void OnCollisionStay(Collision collision) {
+        // Push once enough force is applied at the correct angle.
+        if(collision.relativeVelocity.sqrMagnitude > physicalForceThreshold * physicalForceThreshold) {
+            float velocityDot = Vector3.Dot(collision.relativeVelocity.normalized, pushDirection.forward);
+
+            if(velocityDot >= PUSH_DOT_THRESHOLD) {
+                OnStartPushing();
+            }
         }
     }
 
@@ -53,6 +65,10 @@ public class PhysicalButton : MonoBehaviour {
             return;
 
         pressed = true;
+
+        if(notifyTarget != null) {
+            notifyTarget.SendMessage(notifyMessage, notifyValue);
+        }
     }
 
     private void OnStopPushing() {
@@ -60,9 +76,5 @@ public class PhysicalButton : MonoBehaviour {
             return;
 
         pressed = false;
-
-        if(notifyTarget != null) {
-            notifyTarget.SendMessage(notifyMessage);
-        }
     }
 }
