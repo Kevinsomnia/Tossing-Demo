@@ -20,6 +20,12 @@ public class DemoUI : MonoBehaviour {
         ApplySettings();
     }
 
+    private void Update() {
+        if(Input.GetKeyDown(KeyCode.Escape)) {
+            Application.Quit();
+        }
+    }
+
     public void OnClickedLowGraphics() {
         lowGraphics = !lowGraphics;
         PlayerPrefs.SetInt("LowGraphics", (lowGraphics) ? 1 : 0);
